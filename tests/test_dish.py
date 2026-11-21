@@ -24,6 +24,11 @@ class DishClassifier(td.Dish):
             padding="same"
         )
         self.relu1 = nn.ReLU()
+        self.conv2 = nn.Conv2d(
+            in_channels=CHANNELS, out_channels=CHANNELS, 
+            kernel_size=(3, 3), 
+            padding="same"
+        )
 
         self.steps = 32
         self.noise = 6
@@ -40,7 +45,9 @@ class DishClassifier(td.Dish):
         self.counter += 1
         r = torch.cat((x, self.immutable), dim=1)
         r = self.conv1(r)
-        return torch.clamp(x + self.relu1(r), -1, 1)
+        r = self.relu(r)
+        r = self.conv2(r)
+        return torch.clamp(x + r, -1, 1)
 
 
 def _prepare_images(images):
