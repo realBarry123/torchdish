@@ -1,0 +1,153 @@
+import torchdish as td
+import torch
+from torch import nn
+from torch.utils.data import DataLoader
+from einops import repeat, rearrange
+from tqdm import tqdm
+
+BATCH = 8
+CHANNELS = 16
+
+
+class DishClassifier(td.Dish):
+
+    def __init__(self):
+        super().__init__(
+            shape=(BATCH, CHANNELS, 32, 32),
+            immutable_shape=(BATCH, 1, 32, 32),
+            auto_reset=True,
+            train_immutable=True
+        )
+        self.conv1 = nn.Conv2d(
+            in_channels=CHANNELS+1, out_channels=CHANNELS, 
+            kernel_size=(3, 3), 
+            padding="same"
+        )
+        self.relu1 = nn.ReLU()
+
+        self.steps = 32
+        self.noise = 6
+
+    def write(self, x):
+        # x: (B, H, W)
+        x = repeat(x, "b h w -> b c h w", c=CHANNELS)
+        self.mutable[:, :, :27, :27] = x
+
+    def read(self):
+        return self.mutable[:, :, 27, :10].mean(dim=1)
+
+    def update(self, x):
+        self.counter += 1
+        r = torch.cat((x, self.immutable), dim=1)
+        r = self.conv1(r)
+        return torch.clamp(x + self.relu1(r), -1, 1)
+
+
+def _prepare_images(images):
+    if images.ndim == 4 and images.shape[1] == 1:
+        images = images.squeeze(1)
+    images = images[..., :27, :27]
+    if images.shape[-2:] != (27, 27):
+        raise ValueError("DishClassifier requires images at least 27x27")
+    if images.shape[0] != BATCH:
+        raise ValueError(
+            f"DishClassifier requires batches of {BATCH}; "
+            "set DataLoader(batch_size=8, drop_last=True)"
+        )
+    return images
+
+
+def evaluate_classifier(model, eval_loader, device):
+    model.eval()
+    correct = 0
+    total = 0
+
+    with torch.inference_mode():
+        for images, labels in eval_loader:
+            images = _prepare_images(images).to(device)
+            labels = labels.to(device)
+            predictions = model(images).argmax(dim=1)
+            correct += (predictions == labels).sum().item()
+            total += labels.numel()
+
+    if total == 0:
+        raise ValueError("eval_loader yielded no full classifier batches")
+    return correct / total
+
+
+def train_classifier(model, train_loader, eval_loader, epochs=1, lr=1e-3):
+    if not torch.backends.mps.is_available():
+        raise RuntimeError("MPS is unavailable; classifier training requires an Apple GPU")
+    device = torch.device("mps")
+    model.to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    ce_loss = nn.CrossEntropyLoss()
+    epoch_losses = []
+    epoch_accuracies = []
+
+    for epoch in range(epochs):
+        model.train()
+        total_loss = 0.0
+        batch_count = 0
+
+        for images, labels in tqdm(train_loader):
+            images = _prepare_images(images).to(device)
+            labels = labels.to(device)
+
+            optimizer.zero_grad()
+            logits = model(images)
+            loss = ce_loss(logits, labels.long())
+            loss.backward()
+            optimizer.step()
+
+            total_loss += loss.item()
+            batch_count += 1
+
+        if batch_count == 0:
+            raise ValueError("train_loader yielded no full classifier batches")
+        epoch_loss = total_loss / batch_count
+        accuracy = evaluate_classifier(model, eval_loader, device)
+        epoch_losses.append(epoch_loss)
+        epoch_accuracies.append(accuracy)
+        print(
+            f"Epoch {epoch + 1}/{epochs}: "
+            f"loss={epoch_loss:.4f}, test_accuracy={accuracy:.2%}"
+        )
+        torch.save(model, "tests/models/classifier.pt")
+
+    return epoch_losses, epoch_accuracies
+
+
+if __name__ == "__main__":
+    from torchvision import datasets, transforms
+
+    train_dataset = datasets.MNIST(
+        root="data",
+        train=True,
+        download=True,
+        transform=transforms.ToTensor(),
+    )
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=BATCH,
+        shuffle=True,
+        drop_last=True,
+    )
+    test_dataset = datasets.MNIST(
+        root="data",
+        train=False,
+        download=True,
+        transform=transforms.ToTensor(),
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=BATCH,
+        shuffle=False,
+        drop_last=True,
+    )
+
+    model = DishClassifier()
+    train_classifier(model, train_loader, test_loader, epochs=12, lr=0.001)
+
+
+
