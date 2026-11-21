@@ -23,7 +23,7 @@ class DishClassifier(td.Dish):
             kernel_size=(3, 3), 
             padding="same"
         )
-        self.relu1 = nn.ReLU()
+        self.relu = nn.ReLU()
         self.conv2 = nn.Conv2d(
             in_channels=CHANNELS, out_channels=CHANNELS, 
             kernel_size=(3, 3), 
