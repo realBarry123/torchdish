@@ -23,7 +23,7 @@ def _states_to_rgb(states):
     components = eigenvectors[:, np.argsort(eigenvalues)[::-1][:3]]
     projected = centered @ components
     if projected.shape[1] < 3:
-        projected = np.pad(projected, ((0, 0), (0, 3 - projected.shape[1])))
+        projected = np.repeat(projected[:, :1], 3, axis=1)
 
     rgb = projected.reshape(frame_count, height, width, 3)
     lower = rgb.min(axis=(0, 1, 2), keepdims=True)
@@ -100,6 +100,22 @@ def visualize(model, image):
     )
 
 
+def visualize_immutable(model):
+    if model.immutable.ndim != 4:
+        raise ValueError(
+            "model.immutable must have shape (batch, channels, height, width)"
+        )
+
+    immutable = model.immutable[:1].detach().cpu().numpy()
+    rgb = _states_to_rgb(immutable)[0]
+
+    figure, axis = plt.subplots()
+    axis.imshow(rgb, interpolation="nearest")
+    axis.set_title("Immutable state (PCA RGB)")
+    axis.axis("off")
+    return figure, axis
+
+
 def main():
     from torchvision import datasets, transforms
 
@@ -128,6 +144,8 @@ def main():
         transform=transforms.ToTensor(),
     )
     animation = visualize(model, dataset[0][0])
+    plt.show()
+    visualize_immutable(model)
     plt.show()
     return animation
 

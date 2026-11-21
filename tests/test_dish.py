@@ -24,14 +24,18 @@ class DishClassifier(td.Dish):
             padding="same"
         )
         self.relu = nn.ReLU()
+        self.tanh = nn.Tanh()
         self.conv2 = nn.Conv2d(
             in_channels=CHANNELS, out_channels=CHANNELS, 
             kernel_size=(3, 3), 
             padding="same"
         )
+        self.head = nn.Linear(CHANNELS * 32 * 32, 10)
+        nn.init.zeros_(self.conv2.weight)
+        nn.init.zeros_(self.conv2.bias)
 
-        self.steps = 32
-        self.noise = 6
+        self.steps = 64
+        self.noise = 0
 
     def write(self, x):
         # x: (B, H, W)
@@ -39,7 +43,8 @@ class DishClassifier(td.Dish):
         self.mutable[:, :, :27, :27] = x
 
     def read(self):
-        return self.mutable[:, :, 27, :10].mean(dim=1)
+        return self.mutable[:, :, 14, :10].mean(dim=1) * 10 # self.mutable[:, :, 27, :10].mean(dim=1) * 10
+        # return self.head(self.mutable.flatten(1))
 
     def update(self, x):
         self.counter += 1
@@ -47,7 +52,7 @@ class DishClassifier(td.Dish):
         r = self.conv1(r)
         r = self.relu(r)
         r = self.conv2(r)
-        return torch.clamp(x + r, -1, 1)
+        return x + r * 0.1
 
 
 def _prepare_images(images):
@@ -158,6 +163,4 @@ if __name__ == "__main__":
 
     model = DishClassifier()
     train_classifier(model, train_loader, test_loader, epochs=12, lr=0.001)
-
-
-
+    
