@@ -84,5 +84,5 @@ if __name__ == "__main__":
         torch.save(model.state_dict(), "tests/models/transposer.pt")
 
     import matplotlib.pyplot as plt
-    anim = td.visualize(model, torch.rand(1, 8, 8))
+    anim = td.plot_mutable(model, torch.rand(1, 8, 8), framerate=50)
     plt.show()

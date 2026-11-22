@@ -5,5 +5,7 @@ model = Transposer()
 model.load_state_dict(torch.load("tests/models/transposer.pt", weights_only=False))
 
 import matplotlib.pyplot as plt
-anim = td.visualize(model, torch.rand(1, 8, 8))
+anim = td.plot_mutable(model, torch.rand(1, 8, 8))
+plt.show()
+td.plot_immutable(model)
 plt.show()
