@@ -223,5 +223,5 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Misc
-tests/models
+# tests/models
 data
