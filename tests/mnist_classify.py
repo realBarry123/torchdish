@@ -60,12 +60,6 @@ class MNISTClassifier(td.Dish):
         return x + r * 0.1
 
 
-def _prepare_images(images):
-    if images.ndim == 4 and images.shape[1] == 1:
-        images = images.squeeze(1)
-    return images
-
-
 def evaluate_classifier(model, eval_loader, device):
     model.eval()
     correct = 0
@@ -73,7 +67,7 @@ def evaluate_classifier(model, eval_loader, device):
 
     with torch.no_grad():
         for images, labels in eval_loader:
-            images = _prepare_images(images).to(device)
+            images = images.squeeze(1).to(device)
             labels = labels.to(device)
             predictions = model(images).argmax(dim=1)
             correct += (predictions == labels).sum().item()
@@ -103,7 +97,7 @@ def train_classifier(model, train_loader, eval_loader, epochs=1, lr=1e-3):
         batch_count = 0
 
         for images, labels in tqdm(train_loader):
-            images = _prepare_images(images).to(device)
+            images = images.squeeze(1).to(device)
             labels = labels.to(device)
 
             logits = model(images)
