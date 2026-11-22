@@ -136,7 +136,7 @@ def train_classifier(model, train_loader, eval_loader, epochs=1, lr=1e-3):
             f"Epoch {epoch + 1}/{epochs}: "
             f"loss={epoch_loss:.4f}, test_accuracy={accuracy:.2%}"
         )
-        torch.save(model, "tests/models/classifier.pt")
+        torch.save(model.state_dict(), "tests/models/classifier.pt")
 
     return epoch_losses, epoch_accuracies
 

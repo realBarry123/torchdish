@@ -9,7 +9,7 @@ class Dish(nn.Module):
         super().__init__()
         if len(shape) < 3:
             raise ValueError("Not enough mutable dimensions")
-        self.register_buffer("mutable", torch.zeros(shape))
+        self.register_buffer("mutable", torch.zeros(shape), persistent=False)
         self._train_immutable = train_immutable
         self._immutable = nn.Parameter(torch.zeros(immutable_shape), requires_grad=train_immutable)
         self.counter = 0
@@ -53,7 +53,7 @@ class Dish(nn.Module):
         self._limit = self.steps
         if self.training: 
             self._limit += random.randint(-self.noise, self.noise)
-        self.mutable = torch.zeros([1,] + list(self.mutable.shape[1:]))
+        self.mutable = torch.zeros([1,] + list(self.mutable.shape[1:])).to(self.immutable.device)
 
     def stop(self):
         # Default stopping condition
