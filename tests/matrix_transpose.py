@@ -8,7 +8,7 @@ from torch import nn
 import torchdish as td
 
 BATCH = 8
-CHANNELS = 3
+CHANNELS = 16
 
 if torch.cuda.is_available():
     DEVICE = "cuda"
@@ -38,14 +38,15 @@ class Transposer(td.Dish):
             kernel_size=(3, 3), 
             padding="same"
         )
-        #nn.init.zeros_(self.conv2.weight)
-        #nn.init.zeros_(self.conv2.bias)
+        self.attn = td.nn.FixedAttention2d(CHANNELS, heads=1, H=24, W=32, r=1)
+        nn.init.zeros_(self.conv2.weight)
+        nn.init.zeros_(self.conv2.bias)
 
-        self.steps = 128
-        self.noise = 8
+        self.steps = 16
+        self.noise = 0
 
     def write(self, x):
-        x = repeat(x, "b h w -> b 3 h w")
+        x = repeat(x, "b h w -> b c h w", c=CHANNELS)
         self.mutable[:, :, 8:16, 8:16] = x
 
     def read(self):
@@ -58,12 +59,12 @@ class Transposer(td.Dish):
         r = self.conv1(r)
         r = self.relu(r)
         r = self.conv2(r)
-        return x + r * 0.1
+        r = r + self.attn(x)
+        return x + r
 
 if __name__ == "__main__":
     EPOCHS = 12
     EPOCH_SIZE = 1000
-    K = 4
 
     model = Transposer().to(DEVICE)
     optim = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -72,17 +73,17 @@ if __name__ == "__main__":
         total_loss = 0
         batch_count = 0
         for step in tqdm(range(EPOCH_SIZE)):
-            x = torch.rand(BATCH, 8, 8).to(DEVICE)
+            x = (torch.rand(BATCH, 8, 8) > 0.5).float().to(DEVICE)
             xT_hat = model(x)
-            xT = x.permute((0, 2, 1))
+            xT = x#.permute((0, 2, 1))
             loss = F.mse_loss(xT_hat, xT)
             total_loss += loss.item()
             batch_count += 1
 
-            optim.zero_grad(); loss.backward(); optim.step()
+            optim.zero_grad()
+            loss.backward()
+            # torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optim.step()
         print(total_loss / batch_count)
         torch.save(model.state_dict(), "tests/models/transposer.pt")
 
-    import matplotlib.pyplot as plt
-    anim = td.plot_mutable(model, torch.rand(1, 8, 8), framerate=50)
-    plt.show()

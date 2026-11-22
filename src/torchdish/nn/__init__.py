@@ -1,1 +1,1 @@
-from .fixed_attention import FixedAttention
+from .fixed_attention import FixedAttention2d
