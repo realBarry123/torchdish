@@ -2,12 +2,11 @@ import torchdish as td
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-from einops import repeat, rearrange
+from einops import repeat
 from tqdm import tqdm
 
 BATCH = 8
 CHANNELS = 3
-
 
 class MNISTClassifier(td.Dish):
 
@@ -17,6 +16,10 @@ class MNISTClassifier(td.Dish):
             immutable_shape=(1, 3, 28, 28),
             train_immutable=True
         )
+
+        self.steps = 32
+        self.noise = 4
+
         self.conv1 = nn.Conv2d(
             in_channels=CHANNELS + self.immutable.shape[1], 
             out_channels=CHANNELS, 
@@ -24,7 +27,6 @@ class MNISTClassifier(td.Dish):
             padding="same"
         )
         self.relu = nn.ReLU()
-        self.tanh = nn.Tanh()
         self.conv2 = nn.Conv2d(
             in_channels=CHANNELS, 
             out_channels=CHANNELS, 
@@ -34,16 +36,11 @@ class MNISTClassifier(td.Dish):
         nn.init.zeros_(self.conv2.weight)
         nn.init.zeros_(self.conv2.bias)
 
-        self.steps = 32
-        self.noise = 4
-
     def write(self, x):
-        # x: (B, H, W)
         x = repeat(x, "b h w -> b c h w", c=CHANNELS)
         self.mutable = x
 
     def read(self):
-        # return self.mutable[:, :, 14, :10].mean(dim=1)
         logits = []
         for i in range(2):
             for j in range(5):
@@ -53,7 +50,6 @@ class MNISTClassifier(td.Dish):
                 logits.append(logit)
         return torch.cat(logits, dim=1)
         
-
     def update(self, x):
         r = x
         imm = self.immutable.expand(x.shape[0], -1, -1, -1)   # (1,K,H,W) -> (B,K,H,W)
@@ -67,13 +63,6 @@ class MNISTClassifier(td.Dish):
 def _prepare_images(images):
     if images.ndim == 4 and images.shape[1] == 1:
         images = images.squeeze(1)
-    if images.shape[-2:] != (28, 28):
-        raise ValueError("MNISTClassifier requires 28x28 images")
-    if images.shape[0] != BATCH:
-        raise ValueError(
-            f"MNISTClassifier requires batches of {BATCH}; "
-            "set DataLoader(batch_size=8, drop_last=True)"
-        )
     return images
 
 
@@ -82,7 +71,7 @@ def evaluate_classifier(model, eval_loader, device):
     correct = 0
     total = 0
 
-    with torch.inference_mode():
+    with torch.no_grad():
         for images, labels in eval_loader:
             images = _prepare_images(images).to(device)
             labels = labels.to(device)
@@ -117,17 +106,14 @@ def train_classifier(model, train_loader, eval_loader, epochs=1, lr=1e-3):
             images = _prepare_images(images).to(device)
             labels = labels.to(device)
 
-            optimizer.zero_grad()
             logits = model(images)
             loss = ce_loss(logits, labels.long())
-            loss.backward()
-            optimizer.step()
+
+            optimizer.zero_grad(); loss.backward(); optimizer.step()
 
             total_loss += loss.item()
             batch_count += 1
 
-        if batch_count == 0:
-            raise ValueError("train_loader yielded no full classifier batches")
         epoch_loss = total_loss / batch_count
         accuracy = evaluate_classifier(model, eval_loader, device)
         epoch_losses.append(epoch_loss)
