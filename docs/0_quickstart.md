@@ -1,6 +1,6 @@
 # Quickstart
 
-I'm running a little low on time to write a full tutorial, but I find examples to be very helpful learning tools. As such, I have provided an example implementation for a `Dish` subclass. I invite you to check out [tests/mnist_classify.py](tests/mnist_classify.py) for a more complete setup. 
+I'm running a little low on time to write a full tutorial, but I find examples to be very helpful learning tools. As such, I have provided an example implementation for a `Dish` subclass. I invite you to check out [tests/mnist_classify.py](../tests/mnist_classify.py) for a more complete setup. 
 
 ```python
 class MNISTClassifier(td.Dish):
