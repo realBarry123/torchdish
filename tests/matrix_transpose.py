@@ -63,11 +63,14 @@ class Transposer(td.Dish):
         return x + r
 
 if __name__ == "__main__":
-    EPOCHS = 12
+    EPOCHS = 16
     EPOCH_SIZE = 1000
 
     model = Transposer().to(DEVICE)
-    optim = torch.optim.Adam(model.parameters(), lr=0.001)
+    try: model.load_state_dict(torch.load("tests/models/transposer.pt"))
+    except: print("starting new training run")
+
+    optim = torch.optim.Adam(model.parameters(), lr=0.0015)
 
     for i in range(EPOCHS):
         total_loss = 0
@@ -75,7 +78,7 @@ if __name__ == "__main__":
         for step in tqdm(range(EPOCH_SIZE)):
             x = (torch.rand(BATCH, 8, 8) > 0.5).float().to(DEVICE)
             xT_hat = model(x)
-            xT = x#.permute((0, 2, 1))
+            xT = x.permute((0, 2, 1))
             loss = F.mse_loss(xT_hat, xT)
             total_loss += loss.item()
             batch_count += 1
