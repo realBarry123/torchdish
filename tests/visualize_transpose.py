@@ -4,7 +4,7 @@ from matrix_transpose import Transposer
 from matplotlib.patches import Rectangle
 
 model = Transposer()
-model.load_state_dict(torch.load("tests/models/transposer_1.pt", weights_only=False))
+model.load_state_dict(torch.load("tests/models/mover_16s_16c+3.pt", weights_only=False))
 
 import matplotlib.pyplot as plt
 anim = td.plot_mutable(model, (torch.rand(1, 8, 8) > 0.5).float(), normalize_mode="clip")
