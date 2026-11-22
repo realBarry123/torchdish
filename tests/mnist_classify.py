@@ -13,8 +13,8 @@ class MNISTClassifier(td.Dish):
 
     def __init__(self):
         super().__init__(
-            shape=(BATCH, CHANNELS, 32, 32),
-            immutable_shape=(BATCH, 3, 32, 32),
+            shape=(1, CHANNELS, 28, 28),
+            immutable_shape=(1, 3, 28, 28),
             train_immutable=True
         )
         self.conv1 = nn.Conv2d(
@@ -35,12 +35,12 @@ class MNISTClassifier(td.Dish):
         nn.init.zeros_(self.conv2.bias)
 
         self.steps = 32
-        self.noise = 0
+        self.noise = 4
 
     def write(self, x):
         # x: (B, H, W)
         x = repeat(x, "b h w -> b c h w", c=CHANNELS)
-        self.mutable[:, :, :27, :27] = x
+        self.mutable = x
 
     def read(self):
         # return self.mutable[:, :, 14, :10].mean(dim=1)
@@ -56,7 +56,8 @@ class MNISTClassifier(td.Dish):
 
     def update(self, x):
         r = x
-        r = torch.cat((r, self.immutable), dim=1)
+        imm = self.immutable.expand(x.shape[0], -1, -1, -1)   # (1,K,H,W) -> (B,K,H,W)
+        r = torch.cat((r, imm), dim=1)
         r = self.conv1(r)
         r = self.relu(r)
         r = self.conv2(r)
@@ -66,9 +67,8 @@ class MNISTClassifier(td.Dish):
 def _prepare_images(images):
     if images.ndim == 4 and images.shape[1] == 1:
         images = images.squeeze(1)
-    images = images[..., :27, :27]
-    if images.shape[-2:] != (27, 27):
-        raise ValueError("MNISTClassifier requires images at least 27x27")
+    if images.shape[-2:] != (28, 28):
+        raise ValueError("MNISTClassifier requires 28x28 images")
     if images.shape[0] != BATCH:
         raise ValueError(
             f"MNISTClassifier requires batches of {BATCH}; "
@@ -170,5 +170,4 @@ if __name__ == "__main__":
     )
 
     model = MNISTClassifier()
-    train_classifier(model, train_loader, test_loader, epochs=12, lr=0.001)
-
+    train_classifier(model, train_loader, test_loader, epochs=16, lr=0.001)
