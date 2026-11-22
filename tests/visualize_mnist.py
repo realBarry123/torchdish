@@ -28,7 +28,7 @@ plt.show()
 
 while True: 
     sample = dataset[random.randint(0, 99)][0]
-    animation = td.plot_mutable(model, sample, framerate=200)
+    animation = td.plot_mutable(model, sample, framerate=200, normalize_mode="local")
     axis = animation._fig.axes[0]
     for row in range(2):
         for column in range(5):

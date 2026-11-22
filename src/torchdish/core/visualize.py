@@ -11,11 +11,9 @@ def _states_to_rgb(states):
     centered = pixels - pixels.mean(axis=0, keepdims=True)
 
     if channels == 1: 
-        print(states.shape)
         states = repeat(states, "f 1 h w -> f 3 h w")
         return rearrange(states, "f c h w -> f h w c")
     if channels == 3:
-        print(states.shape)
         return rearrange(states, "f c h w -> f h w c")
 
     covariance = centered.T @ centered / max(len(centered), 1)
@@ -36,9 +34,11 @@ def _states_to_rgb(states):
     )
     return np.clip(rgb, 0, 1)
 
-def plot_mutable(model, x, framerate=100):
+def plot_mutable(model, x, framerate=100, normalize_mode="local"):
     if model.mutable.ndim != 4:
         raise ValueError("model.mutable must have shape (batch, channels, height, width)")
+    if normalize_mode not in ("local", "global", "clip"):
+        raise ValueError("normalize_mode not recognized, please use one of 'local', 'global', 'clip'")
 
     x = torch.as_tensor(x)
     if x.ndim == 4:
@@ -73,8 +73,16 @@ def plot_mutable(model, x, framerate=100):
             for i in range(model.steps + model.noise):
                 model.mutable = model.update(model.mutable)
                 frame = model.mutable[0]
-                frame = (frame - frame.min()) / (frame.max()-frame.min()) # added per-frame normalization
+                if normalize_mode == "local": 
+                    lo, hi = np.percentile(frame, [1, 99]) 
+                    frame = (frame - lo) / (hi - lo + 1e-6) # per frame norm
                 snapshots.append(frame.detach().cpu().numpy())
+
+            snaps = np.stack(snapshots)
+            if normalize_mode == "global":
+                lo, hi = np.percentile(snaps, [1, 99])
+                snaps = ((snaps - lo) / (hi - lo + 1e-6))
+            snaps = snaps.clip(0, 1)
     finally:
         model.mutable = previous_mutable
         model.counter = previous_counter
@@ -82,7 +90,7 @@ def plot_mutable(model, x, framerate=100):
         model.train(was_training)
 
 
-    frames = _states_to_rgb(np.stack(snapshots))
+    frames = _states_to_rgb(snaps)
     figure, axis = plt.subplots()
     figure.subplots_adjust(bottom=0.22)
     image_artist = axis.imshow(frames[0], interpolation="nearest")
@@ -148,13 +156,19 @@ def plot_mutable(model, x, framerate=100):
     animation._torchdish_widgets = (frame_slider, play_button)
     return animation
 
-def plot_immutable(model):
+def plot_immutable(model, normalize_mode="scale"):
     if model.immutable.ndim != 4:
         raise ValueError(
             "model.immutable must have shape (batch, channels, height, width)"
         )
+    if normalize_mode not in ("scale", "clip"):
+        raise ValueError("normalize_mode not recognized, please use one of 'scale', 'clip'")
 
     immutable = model.immutable[:1].detach().cpu().numpy()
+    if normalize_mode == "scale":
+        lo, hi = np.percentile(immutable, [1, 99])
+        immutable = ((immutable - lo) / (hi - lo + 1e-6))
+    immutable = immutable.clip(0, 1)
     rgb = _states_to_rgb(immutable)[0]
 
     figure, axis = plt.subplots()
