@@ -5,11 +5,11 @@ from einops import repeat
 
 class Dish(nn.Module):
 
-    def __init__(self, shape: tuple, immutable_shape, train_immutable=False):
+    def __init__(self, mutable_shape: tuple, immutable_shape: tuple, train_immutable=False):
         super().__init__()
-        if len(shape) < 3:
+        if len(mutable_shape) < 3:
             raise ValueError("Not enough mutable dimensions")
-        self.register_buffer("mutable", torch.zeros(shape), persistent=False)
+        self.register_buffer("mutable", torch.zeros(mutable_shape), persistent=False)
         self._train_immutable = train_immutable
         self._immutable = nn.Parameter(torch.zeros(immutable_shape), requires_grad=train_immutable)
         self.counter = 0

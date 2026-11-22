@@ -21,7 +21,7 @@ class Transposer(td.Dish):
 
     def __init__(self):
         super().__init__(
-            shape=(1, CHANNELS, 24, 32),
+            mutable_shape=(1, CHANNELS, 24, 32),
             immutable_shape=(1, 3, 24, 32),
             train_immutable=True
         )

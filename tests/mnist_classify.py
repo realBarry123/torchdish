@@ -13,7 +13,7 @@ class MNISTClassifier(td.Dish):
 
     def __init__(self):
         super().__init__(
-            shape=(1, CHANNELS, 28, 28),
+            mutable_shape=(1, CHANNELS, 28, 28),
             immutable_shape=(1, 3, 28, 28),
             train_immutable=True
         )
