@@ -44,7 +44,16 @@ class DishClassifier(td.Dish):
         self.mutable[:, :, :27, :27] = x
 
     def read(self):
-        return self.mutable[:, :, 14, :10].mean(dim=1)
+        # return self.mutable[:, :, 14, :10].mean(dim=1)
+        logits = []
+        for i in range(2):
+            for j in range(5):
+                logit_area = self.mutable[:, :3, 5*i: 5*i+5, 5*j: 5*j + 5]
+                logit = logit_area.mean((2, 3), keepdim=False) # neighbourhood mean
+                logit = logit.mean(1, keepdim=True) # mean across channels
+                logits.append(logit)
+        return torch.cat(logits, dim=1)
+        
 
     def update(self, x):
         r = x
