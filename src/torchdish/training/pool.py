@@ -11,16 +11,16 @@ class Pool:
         return self.states.shape[0]
 
     def sample(self, n):
-        idx = torch.randperm(len(self), device=self.states.device)[:n]
-        return self.states[idx].clone(), idx
+        idcs = torch.randperm(len(self), device=self.states.device)[:n]
+        return self.states[idcs].clone(), idcs
 
-    def update(self, idx, states):
-        self.states[idx] = states.detach().to(self.states.device)
+    def update(self, idcs, states):
+        self.states[idcs] = states.detach().to(self.states.device)
 
-    def reset(self, idx=None):
-        if idx is None:
-            idx = torch.arange(len(self), device=self.states.device)
-        self.states[idx] = torch.cat([self.init_fn() for _ in range(len(idx))]).to(self.states.device)
+    def reset(self, idcs=None):
+        if idcs is None:
+            idcs = torch.arange(len(self), device=self.states.device)
+        self.states[idcs] = torch.cat([self.init_fn() for _ in range(len(idcs))]).to(self.states.device)
 
     def to(self, device):
         self.states = self.states.to(device)
@@ -33,9 +33,9 @@ class LabelledPool(Pool):
         super().__init__(size, init_fn)
 
     def sample(self, n):
-        items, idx = super().sample(n)
+        items, idcs = super().sample(n)
         states, labels = zip(*items)
-        return torch.cat(states), torch.cat(labels), idx
+        return torch.cat(states), torch.cat(labels), idcs
 
     def update(self, idx, states, labels):
         super().update(idx, list(zip(states.split(1), labels.split(1))))
