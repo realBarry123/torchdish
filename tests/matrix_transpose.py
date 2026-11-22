@@ -86,28 +86,3 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     anim = td.visualize(model, torch.rand(1, 8, 8))
     plt.show()
-
-'''
-for i in range(EPOCHS):
-    for step in tqdm(range(EPOCH_SIZE)):
-        states, idcs = pool.sample(BATCH)
-
-        with torch.no_grad():
-            model.mutable = states
-            per_sample = F.mse_loss(states[:, 0], states[:, 1], reduction="none")
-            worst = per_sample.topk(K).indices
-
-        model.reset()
-        print(states.shape)
-        model.write(states[:, 0])
-        pool.reset(worst)
-
-        logits = model.resume(random.randint(8, 16))
-        loss = F.mse_loss(model.mutable, states[:, 1])
-
-        optim.zero_grad()
-        loss.backward()
-        optim.step()
-
-        pool.update(idcs, torch.cat((model.mutable, states[:, 1]), dim=2))
-'''
