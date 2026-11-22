@@ -27,8 +27,6 @@ class SobelFilter(nn.Module):
             raise ValueError("SobelFilter expects input with shape (B, C, H, W)")
 
         channels = x.shape[1]
-        if channels == 0:
-            raise ValueError("SobelFilter requires at least one input channel")
 
         kernel_x = self.kernel_x.to(dtype=x.dtype, device=x.device)
         kernel_y = self.kernel_y.to(dtype=x.dtype, device=x.device)
