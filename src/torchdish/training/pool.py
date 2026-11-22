@@ -25,3 +25,17 @@ class Pool:
     def to(self, device):
         self.states = self.states.to(device)
         return self
+
+
+class LabelledPool(Pool):
+    def __init__(self, size, init_fn):
+        # init_fn() -> (state, label) with state (1, *shape), label (1,)
+        super().__init__(size, init_fn)
+
+    def sample(self, n):
+        items, idx = super().sample(n)
+        states, labels = zip(*items)
+        return torch.cat(states), torch.cat(labels), idx
+
+    def update(self, idx, states, labels):
+        super().update(idx, list(zip(states.split(1), labels.split(1))))
