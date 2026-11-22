@@ -6,7 +6,7 @@ from einops import repeat, rearrange
 from tqdm import tqdm
 
 BATCH = 8
-CHANNELS = 16
+CHANNELS = 3
 
 
 class DishClassifier(td.Dish):
@@ -14,27 +14,28 @@ class DishClassifier(td.Dish):
     def __init__(self):
         super().__init__(
             shape=(BATCH, CHANNELS, 32, 32),
-            immutable_shape=(BATCH, 1, 32, 32),
+            immutable_shape=(BATCH, 3, 32, 32),
             auto_reset=True,
             train_immutable=True
         )
         self.conv1 = nn.Conv2d(
-            in_channels=CHANNELS+1, out_channels=CHANNELS, 
+            in_channels=CHANNELS + self.immutable.shape[1], 
+            out_channels=CHANNELS, 
             kernel_size=(3, 3), 
             padding="same"
         )
         self.relu = nn.ReLU()
         self.tanh = nn.Tanh()
         self.conv2 = nn.Conv2d(
-            in_channels=CHANNELS, out_channels=CHANNELS, 
+            in_channels=CHANNELS, 
+            out_channels=CHANNELS, 
             kernel_size=(3, 3), 
             padding="same"
         )
-        self.head = nn.Linear(CHANNELS * 32 * 32, 10)
         nn.init.zeros_(self.conv2.weight)
         nn.init.zeros_(self.conv2.bias)
 
-        self.steps = 64
+        self.steps = 32
         self.noise = 0
 
     def write(self, x):
@@ -43,12 +44,11 @@ class DishClassifier(td.Dish):
         self.mutable[:, :, :27, :27] = x
 
     def read(self):
-        return self.mutable[:, :, 14, :10].mean(dim=1) * 10 # self.mutable[:, :, 27, :10].mean(dim=1) * 10
-        # return self.head(self.mutable.flatten(1))
+        return self.mutable[:, :, 14, :10].mean(dim=1)
 
     def update(self, x):
-        self.counter += 1
-        r = torch.cat((x, self.immutable), dim=1)
+        r = x
+        r = torch.cat((r, self.immutable), dim=1)
         r = self.conv1(r)
         r = self.relu(r)
         r = self.conv2(r)
@@ -163,4 +163,4 @@ if __name__ == "__main__":
 
     model = DishClassifier()
     train_classifier(model, train_loader, test_loader, epochs=12, lr=0.001)
-    
+

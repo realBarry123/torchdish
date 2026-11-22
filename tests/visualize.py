@@ -9,7 +9,7 @@ from test_dish import BATCH, DishClassifier
 
 
 MODEL_PATH = (
-    Path(__file__).resolve().parent / "models" / "classifier.pt"
+    Path(__file__).resolve().parent / "models" / "classifier_32s_3c+3.pt"
 )
 
 
@@ -70,7 +70,7 @@ def visualize(model, image):
             model.write(batch)
             snapshots.append(model.mutable[0].detach().cpu().numpy())
 
-            for i in range(128):
+            for i in range(model.steps + model.noise):
                 model.mutable = model.update(model.mutable)
                 snapshots.append(model.mutable[0].detach().cpu().numpy())
     finally:

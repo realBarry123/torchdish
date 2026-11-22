@@ -64,4 +64,5 @@ class Dish(nn.Module):
         self.write(x)
         while not self.stop():
             self.mutable = self.update(self.mutable)
+            self.counter += 1
         return self.read()
